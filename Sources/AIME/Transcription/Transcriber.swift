@@ -44,12 +44,17 @@ public class Transcriber: ObservableObject {
     private let recordingConfiguration: RecordingConfiguration
     
     /// Initialiseur avec configuration personnalisée
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     public init(
         transcriptionConfig: TranscriptionConfiguration? = nil,
         recordingConfig: RecordingConfiguration? = nil
     ) {
-        self.configuration = transcriptionConfig ?? AIME.defaultConfiguration.transcription
-        self.recordingConfiguration = recordingConfig ?? AIME.defaultConfiguration.recording
+        if #available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *) {
+            self.configuration = transcriptionConfig ?? AIME.defaultConfiguration.transcription
+            self.recordingConfiguration = recordingConfig ?? AIME.defaultConfiguration.recording
+        } else {
+            fatalError("Transcriber requires iOS 26.0+")
+        }
     }
     
     /// Démarrer l'enregistrement et la transcription

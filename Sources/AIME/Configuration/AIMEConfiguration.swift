@@ -10,6 +10,7 @@ import AVFoundation
 #endif
 
 /// Configuration globale pour AIME
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct AIMEConfiguration {
     /// Configuration du modèle de langage
     public var languageModel: LanguageModelConfiguration
@@ -24,6 +25,7 @@ public struct AIMEConfiguration {
     public var recording: RecordingConfiguration
     
     /// Initialiseur par défaut
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     public init(
         languageModel: LanguageModelConfiguration = LanguageModelConfiguration(),
         logging: LoggingConfiguration = LoggingConfiguration(),
@@ -103,6 +105,7 @@ public struct LoggingConfiguration {
 }
 
 /// Configuration de la transcription
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct TranscriptionConfiguration {
     /// Locale pour la transcription
     public var locale: Locale
@@ -119,6 +122,7 @@ public struct TranscriptionConfiguration {
     /// Taille du buffer audio
     public var bufferSize: Int
     
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     public init(
         locale: Locale = .current,
         transcriptionOptions: Set<SpeechTranscriber.TranscriptionOption> = [],

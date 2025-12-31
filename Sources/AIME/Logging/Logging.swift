@@ -51,7 +51,11 @@ public class AIMELogger {
     private let osLogger: Logger
     
     private init() {
-        self.configuration = AIME.defaultConfiguration.logging
+        if #available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *) {
+            self.configuration = AIME.defaultConfiguration.logging
+        } else {
+            self.configuration = LoggingConfiguration()
+        }
         self.osLogger = Logger(subsystem: "com.kamilbourouiba.AIME", category: "AIME")
     }
     
@@ -165,16 +169,18 @@ public class TokenTracker {
         let usage = TokenUsage(inputTokens: inputTokens, outputTokens: outputTokens)
         usageHistory.append(usage)
         
-        if AIME.defaultConfiguration.logging.logTokens {
-            AIMELogger.shared.info(
-                "Tokens utilisés - Input: \(inputTokens), Output: \(outputTokens), Total: \(usage.totalTokens)",
-                category: "TokenTracker",
-                metadata: [
-                    "inputTokens": inputTokens,
-                    "outputTokens": outputTokens,
-                    "totalTokens": usage.totalTokens
-                ]
-            )
+        if #available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *) {
+            if AIME.defaultConfiguration.logging.logTokens {
+                AIMELogger.shared.info(
+                    "Tokens utilisés - Input: \(inputTokens), Output: \(outputTokens), Total: \(usage.totalTokens)",
+                    category: "TokenTracker",
+                    metadata: [
+                        "inputTokens": inputTokens,
+                        "outputTokens": outputTokens,
+                        "totalTokens": usage.totalTokens
+                    ]
+                )
+            }
         }
     }
     
