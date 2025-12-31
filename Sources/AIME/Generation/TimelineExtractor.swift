@@ -114,15 +114,22 @@ public struct TimelineExtractor {
             var notes: String?
             
             for try await partialResponse in stream {
-                timelineItems = partialResponse.content.timeline ?? []
-                notes = partialResponse.content.extractionNotes
+                if let timeline = partialResponse.content.timeline {
+                    timelineItems = timeline
+                }
+                if let extractionNotes = partialResponse.content.extractionNotes {
+                    notes = extractionNotes
+                }
             }
             
-            let items = timelineItems.map { item in
-                TimelineItem(
+            let items = timelineItems.compactMap { item -> TimelineItem? in
+                guard let title = item.title, let date = item.date else {
+                    return nil
+                }
+                return TimelineItem(
                     id: UUID(),
-                    title: item.title,
-                    date: item.date,
+                    title: title,
+                    date: date,
                     owner: item.owner,
                     status: item.status,
                     priority: mapPriority(item.priority)
@@ -205,12 +212,15 @@ public struct TimelineExtractor {
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
             for try await partialResponse in stream {
-                let timelineItems = partialResponse.content.timeline ?? []
-                let items = timelineItems.map { item in
-                    TimelineItem(
+                guard let timeline = partialResponse.content.timeline else { continue }
+                let items = timeline.compactMap { item -> TimelineItem? in
+                    guard let title = item.title, let date = item.date else {
+                        return nil
+                    }
+                    return TimelineItem(
                         id: UUID(),
-                        title: item.title,
-                        date: item.date,
+                        title: title,
+                        date: date,
                         owner: item.owner,
                         status: item.status,
                         priority: mapPriority(item.priority)
