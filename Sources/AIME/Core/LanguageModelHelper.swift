@@ -55,18 +55,10 @@ public struct LanguageModelHelper {
         
         // Enregistrer les tokens
         let inputTokens = TextProcessor.estimateTokenCount(prompt)
-        // Estimer les tokens de sortie en sérialisant la réponse
-        let encoder = JSONEncoder()
-        if let jsonData = try? encoder.encode(response.content),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            let outputTokens = TextProcessor.estimateTokenCount(jsonString)
-            TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: outputTokens)
-        } else {
-            // Fallback: estimation basée sur la description
-            let outputText = String(describing: response.content)
-            let outputTokens = TextProcessor.estimateTokenCount(outputText)
-            TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: outputTokens)
-        }
+        // Estimer les tokens de sortie basé sur la description
+        let outputText = String(describing: response.content)
+        let outputTokens = TextProcessor.estimateTokenCount(outputText)
+        TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: outputTokens)
         
         return response.content
     }
@@ -77,14 +69,17 @@ public struct LanguageModelHelper {
     ///   - session: La session de modèle (optionnel)
     ///   - useCase: Cas d'utilisation (si session non fournie)
     ///   - instructions: Instructions système (si session non fournie)
-    ///   - onUpdate: Callback appelé à chaque mise à jour
+    ///   - onUpdate: Callback appelé à chaque mise à jour avec le contenu partiel
     /// - Returns: La réponse finale de type T
+    /// 
+    /// Note: Le callback reçoit `T.PartiallyGenerated` qui peut être utilisé comme `T` dans la plupart des cas.
+    /// Pour obtenir le `T` final complet, cette méthode fait un appel final avec `respond()`.
     public static func generateStreaming<T: Generable>(
         prompt: String,
         session: LanguageModelSession? = nil,
         useCase: SystemLanguageModel.UseCase = .general,
         instructions: String? = nil,
-        onUpdate: @escaping (T) -> Void
+        onUpdate: @escaping (T.PartiallyGenerated) -> Void
     ) async throws -> T {
         let finalSession: LanguageModelSession
         if let session = session {
@@ -95,23 +90,15 @@ public struct LanguageModelHelper {
         
         let stream = finalSession.streamResponse(to: prompt, generating: T.self)
         let inputTokens = TextProcessor.estimateTokenCount(prompt)
-        var lastResponse: T?
         var lastOutputTokens = 0
         
         for try await partialResponse in stream {
-            lastResponse = partialResponse.content
-            onUpdate(partialResponse.content)
+            let partialContent = partialResponse.content
+            onUpdate(partialContent)
             
-            // Enregistrer les tokens
-            let encoder = JSONEncoder()
-            var currentOutputTokens = 0
-            if let jsonData = try? encoder.encode(partialResponse.content),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                currentOutputTokens = TextProcessor.estimateTokenCount(jsonString)
-            } else {
-                let outputText = String(describing: partialResponse.content)
-                currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
-            }
+            // Enregistrer les tokens basé sur la description
+            let outputText = String(describing: partialContent)
+            let currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
             
             if currentOutputTokens != lastOutputTokens {
                 TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
@@ -119,11 +106,9 @@ public struct LanguageModelHelper {
             }
         }
         
-        guard let finalResponse = lastResponse else {
-            throw AIMEError.generationUnknownError(NSError(domain: "AIME", code: -1))
-        }
-        
-        return finalResponse
+        // Obtenir la réponse finale complète
+        let finalResponse = try await finalSession.respond(to: prompt, generating: T.self)
+        return finalResponse.content
     }
 }
 
