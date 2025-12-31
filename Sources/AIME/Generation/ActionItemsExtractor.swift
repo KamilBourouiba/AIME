@@ -5,6 +5,14 @@
 import Foundation
 import FoundationModels
 
+// Types Generable pour ActionItemsExtractor
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
+@Generable
+private struct ActionItemsResponse {
+    @Guide(description: "Une liste d'action items prioritaires de la réunion")
+    var actionItems: [String]
+}
+
 /// Gestionnaire d'extraction d'action items
 @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct ActionItemsExtractor {
@@ -56,12 +64,6 @@ public struct ActionItemsExtractor {
                 model: model,
                 instructions: instructions ?? defaultInstructions
             )
-            
-            @Generable
-            struct ActionItemsResponse {
-                @Guide(description: "Une liste d'action items prioritaires de la réunion", .maximumCount(maxItems))
-                var actionItems: [String]
-            }
             
             let stream = session.streamResponse(to: text, generating: ActionItemsResponse.self)
             
@@ -150,12 +152,6 @@ public struct ActionItemsExtractor {
                 model: model,
                 instructions: instructions ?? defaultInstructions
             )
-            
-            @Generable
-            struct ActionItemsResponse {
-                @Guide(description: "Une liste d'action items prioritaires de la réunion", .maximumCount(maxItems))
-                var actionItems: [String]
-            }
             
             let stream = session.streamResponse(to: text, generating: ActionItemsResponse.self)
             

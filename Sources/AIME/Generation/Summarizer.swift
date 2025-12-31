@@ -222,18 +222,21 @@ public struct Summarizer {
     }
 }
 
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 @Generable
 private struct Summary {
     var summary: String
 }
 
 // Helper pour le traitement par chunks
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 private struct ChunkProcessor {
     let model: SystemLanguageModel
     let instructions: String
     let text: String
     let ranges: [Range<String.Index>]
     
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     init(model: SystemLanguageModel, instructions: String, text: String) {
         self.model = model
         self.instructions = instructions
@@ -244,10 +247,12 @@ private struct ChunkProcessor {
         self.ranges = tokenizer.tokens(for: text.startIndex ..< text.endIndex)
     }
     
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     func process(operation: (String) async throws -> String) async throws -> String {
         try await ChunkProcessor.process(text, ranges: ranges, operation: operation)
     }
     
+    @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
     static func process(
         _ string: String,
         ranges: [Range<String.Index>],

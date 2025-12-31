@@ -5,6 +5,46 @@
 import Foundation
 import FoundationModels
 
+// Types Generable pour TimelineExtractor
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
+@Generable
+private enum TimelinePriorityResponse {
+    case critical
+    case high
+    case medium
+    case low
+    case unspecified
+}
+
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
+@Generable
+private struct TimelineItemResponse {
+    @Guide(description: "Titre de l'item/jalon/tâche sur la timeline du projet")
+    var title: String
+    
+    @Guide(description: "Date d'échéance ou période pour cet item")
+    var date: String
+    
+    @Guide(description: "Nom de l'individu responsable de cet item, UNIQUEMENT si spécifié")
+    var owner: String?
+    
+    @Guide(description: "Statut actuel de l'item de timeline, UNIQUEMENT si mentionné dans les transcriptions, ex: 'terminé', 'en cours', 'bloqué', 'planifié'")
+    var status: String?
+    
+    @Guide(description: "Priorité de l'item de timeline, UNIQUEMENT si mentionnée")
+    var priority: TimelinePriorityResponse?
+}
+
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
+@Generable
+private struct TimelineResponse {
+    @Guide(description: "Tableau d'items de timeline (jalons et tâches) extraits des transcriptions de réunions")
+    var timeline: [TimelineItemResponse]?
+    
+    @Guide(description: "Toutes notes importantes ou ambiguïtés rencontrées lors de l'extraction")
+    var extractionNotes: String?
+}
+
 /// Gestionnaire d'extraction de timeline
 @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct TimelineExtractor {
@@ -67,42 +107,6 @@ public struct TimelineExtractor {
                 model: model,
                 instructions: instructions ?? defaultInstructions
             )
-            
-            @Generable
-            struct TimelineResponse {
-                @Guide(description: "Tableau d'items de timeline (jalons et tâches) extraits des transcriptions de réunions")
-                var timeline: [TimelineItemResponse]?
-                
-                @Guide(description: "Toutes notes importantes ou ambiguïtés rencontrées lors de l'extraction")
-                var extractionNotes: String?
-            }
-            
-            @Generable
-            struct TimelineItemResponse {
-                @Guide(description: "Titre de l'item/jalon/tâche sur la timeline du projet")
-                var title: String
-                
-                @Guide(description: "Date d'échéance ou période pour cet item")
-                var date: String
-                
-                @Guide(description: "Nom de l'individu responsable de cet item, UNIQUEMENT si spécifié")
-                var owner: String?
-                
-                @Guide(description: "Statut actuel de l'item de timeline, UNIQUEMENT si mentionné dans les transcriptions, ex: 'terminé', 'en cours', 'bloqué', 'planifié'")
-                var status: String?
-                
-                @Guide(description: "Priorité de l'item de timeline, UNIQUEMENT si mentionnée")
-                var priority: PriorityResponse?
-            }
-            
-            @Generable
-            enum PriorityResponse {
-                case critical
-                case high
-                case medium
-                case low
-                case unspecified
-            }
             
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
@@ -198,42 +202,6 @@ public struct TimelineExtractor {
                 instructions: instructions ?? defaultInstructions
             )
             
-            @Generable
-            struct TimelineResponse {
-                @Guide(description: "Tableau d'items de timeline (jalons et tâches) extraits des transcriptions de réunions")
-                var timeline: [TimelineItemResponse]?
-                
-                @Guide(description: "Toutes notes importantes ou ambiguïtés rencontrées lors de l'extraction")
-                var extractionNotes: String?
-            }
-            
-            @Generable
-            struct TimelineItemResponse {
-                @Guide(description: "Titre de l'item/jalon/tâche sur la timeline du projet")
-                var title: String
-                
-                @Guide(description: "Date d'échéance ou période pour cet item")
-                var date: String
-                
-                @Guide(description: "Nom de l'individu responsable de cet item, UNIQUEMENT si spécifié")
-                var owner: String?
-                
-                @Guide(description: "Statut actuel de l'item de timeline, UNIQUEMENT si mentionné")
-                var status: String?
-                
-                @Guide(description: "Priorité de l'item de timeline, UNIQUEMENT si mentionnée")
-                var priority: PriorityResponse?
-            }
-            
-            @Generable
-            enum PriorityResponse {
-                case critical
-                case high
-                case medium
-                case low
-                case unspecified
-            }
-            
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
             for try await partialResponse in stream {
@@ -283,7 +251,7 @@ public struct TimelineExtractor {
         }
     }
     
-    private static func mapPriority(_ priority: PriorityResponse?) -> Priority? {
+    private static func mapPriority(_ priority: TimelinePriorityResponse?) -> Priority? {
         guard let priority = priority else { return nil }
         switch priority {
         case .critical:

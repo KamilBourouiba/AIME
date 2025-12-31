@@ -6,6 +6,20 @@ import Foundation
 import FoundationModels
 import SwiftUI
 
+// Types Generable pour QuestionAnswerer
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
+@Generable
+private struct QuestionAnswerResponse {
+    @Guide(description: "Une citation exacte contenant la réponse depuis le matériel source")
+    var citation: String?
+    
+    @Guide(description: "Une réponse brève à la question")
+    var answer: String
+    
+    @Guide(description: "Indique si il n'était pas possible de répondre à la question")
+    var insufficientInformation: Bool
+}
+
 /// Gestionnaire de questions-réponses simplifié
 @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct QuestionAnswerer {
@@ -64,18 +78,6 @@ public struct QuestionAnswerer {
                 instructions: finalInstructions
             )
             
-            @Generable
-            struct Response {
-                @Guide(description: "Une citation exacte contenant la réponse depuis le matériel source")
-                var citation: String?
-                
-                @Guide(description: "Une réponse brève à la question")
-                var answer: String
-                
-                @Guide(description: "Indique si il n'était pas possible de répondre à la question")
-                var insufficientInformation: Bool
-            }
-            
             let prompt = """
             Question: \(question)
             
@@ -85,7 +87,7 @@ public struct QuestionAnswerer {
             
             let response = try await session.respond(
                 to: prompt,
-                generating: Response.self
+                generating: QuestionAnswerResponse.self
             )
             
             let elapsedTime = Date().timeIntervalSince(startTime)
@@ -181,18 +183,6 @@ public struct QuestionAnswerer {
                 instructions: instructions ?? defaultInstructions
             )
             
-            @Generable
-            struct Response {
-                @Guide(description: "Une citation exacte contenant la réponse depuis le matériel source")
-                var citation: String?
-                
-                @Guide(description: "Une réponse brève à la question")
-                var answer: String
-                
-                @Guide(description: "Indique si il n'était pas possible de répondre à la question")
-                var insufficientInformation: Bool
-            }
-            
             let prompt = """
             Question: \(question)
             
@@ -200,7 +190,7 @@ public struct QuestionAnswerer {
             \(context)
             """
             
-            let stream = session.streamResponse(generating: Response.self) {
+            let stream = session.streamResponse(generating: QuestionAnswerResponse.self) {
                 prompt
             }
             
