@@ -38,6 +38,7 @@ public struct AIMEConfiguration {
 }
 
 /// Configuration du modèle de langage
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct LanguageModelConfiguration {
     /// Cas d'utilisation du modèle
     public var useCase: SystemLanguageModel.UseCase

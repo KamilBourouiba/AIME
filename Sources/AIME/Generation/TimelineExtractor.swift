@@ -6,6 +6,7 @@ import Foundation
 import FoundationModels
 
 /// Gestionnaire d'extraction de timeline
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct TimelineExtractor {
     
     /// Extraire une timeline d'un texte

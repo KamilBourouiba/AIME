@@ -7,6 +7,7 @@ import FoundationModels
 import SwiftUI
 
 /// Gestionnaire de questions-réponses simplifié
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct QuestionAnswerer {
     
     /// Poser une question simple avec contexte

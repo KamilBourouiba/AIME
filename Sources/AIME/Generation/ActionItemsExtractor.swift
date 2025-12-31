@@ -6,6 +6,7 @@ import Foundation
 import FoundationModels
 
 /// Gestionnaire d'extraction d'action items
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct ActionItemsExtractor {
     
     /// Extraire les action items d'un texte

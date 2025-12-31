@@ -7,6 +7,7 @@ import FoundationModels
 import NaturalLanguage
 
 /// Style de résumé
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public enum SummaryStyle {
     case concise      // Résumé très court
     case standard     // Résumé de longueur moyenne
@@ -28,6 +29,7 @@ public enum SummaryStyle {
 }
 
 /// Gestionnaire de résumés
+@available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
 public struct Summarizer {
     
     /// Générer un résumé d'un texte
