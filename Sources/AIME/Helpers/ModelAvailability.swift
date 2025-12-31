@@ -23,13 +23,13 @@ public struct ModelAvailability {
     /// - Parameter useCase: Cas d'utilisation
     /// - Returns: Raison de l'indisponibilité ou nil si disponible
     @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)
-    public static func unavailabilityReason(useCase: SystemLanguageModel.UseCase = .general) -> (any Sendable)? {
+    public static func unavailabilityReason(useCase: SystemLanguageModel.UseCase = .general) -> Any? {
         let model = SystemLanguageModel(useCase: useCase)
         switch model.availability {
         case .available:
             return nil
         case .unavailable(let reason):
-            return reason as? any Sendable
+            return reason
         }
     }
     
