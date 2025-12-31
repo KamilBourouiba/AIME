@@ -110,30 +110,28 @@ public struct TimelineExtractor {
             
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
-            var timelineItems: [TimelineItemResponse] = []
+            var items: [TimelineItem] = []
             var notes: String?
             
             for try await partialResponse in stream {
-                if let timeline = partialResponse.content.timeline {
-                    timelineItems = timeline
+                if let partialTimeline = partialResponse.content.timeline {
+                    items = partialTimeline.compactMap { partialItem -> TimelineItem? in
+                        guard let title = partialItem.title, let date = partialItem.date else {
+                            return nil
+                        }
+                        return TimelineItem(
+                            id: UUID(),
+                            title: title,
+                            date: date,
+                            owner: partialItem.owner,
+                            status: partialItem.status,
+                            priority: mapPriority(partialItem.priority)
+                        )
+                    }
                 }
                 if let extractionNotes = partialResponse.content.extractionNotes {
                     notes = extractionNotes
                 }
-            }
-            
-            let items = timelineItems.compactMap { item -> TimelineItem? in
-                guard let title = item.title, let date = item.date else {
-                    return nil
-                }
-                return TimelineItem(
-                    id: UUID(),
-                    title: title,
-                    date: date,
-                    owner: item.owner,
-                    status: item.status,
-                    priority: mapPriority(item.priority)
-                )
             }
             
             let timeline = Timeline(
@@ -212,27 +210,28 @@ public struct TimelineExtractor {
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
             for try await partialResponse in stream {
-                guard let timeline = partialResponse.content.timeline else { continue }
-                let items = timeline.compactMap { item -> TimelineItem? in
-                    guard let title = item.title, let date = item.date else {
+                guard let partialTimeline = partialResponse.content.timeline else { continue }
+                
+                let items = partialTimeline.compactMap { partialItem -> TimelineItem? in
+                    guard let title = partialItem.title, let date = partialItem.date else {
                         return nil
                     }
                     return TimelineItem(
                         id: UUID(),
                         title: title,
                         date: date,
-                        owner: item.owner,
-                        status: item.status,
-                        priority: mapPriority(item.priority)
+                        owner: partialItem.owner,
+                        status: partialItem.status,
+                        priority: mapPriority(partialItem.priority)
                     )
                 }
                 
-                let timeline = Timeline(
+                let resultTimeline = Timeline(
                     items: items,
                     extractionNotes: partialResponse.content.extractionNotes
                 )
                 
-                onUpdate(timeline)
+                onUpdate(resultTimeline)
             }
             
             AIMELogger.shared.info("Extraction de timeline en streaming terminée")
