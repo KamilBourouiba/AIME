@@ -112,6 +112,8 @@ public struct TimelineExtractor {
             
             var items: [TimelineItem] = []
             var notes: String?
+            let inputTokens = TextProcessor.estimateTokenCount(text)
+            var lastOutputTokens = 0
             
             for try await partialResponse in stream {
                 if let partialTimeline = partialResponse.content.timeline {
@@ -128,6 +130,14 @@ public struct TimelineExtractor {
                             priority: mapPriority(partialItem.priority)
                         )
                     }
+                    
+                    // Enregistrer les tokens
+                    let outputText = items.map { "\($0.title) \($0.date)" }.joined(separator: " ")
+                    let currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
+                    if currentOutputTokens != lastOutputTokens {
+                        TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                        lastOutputTokens = currentOutputTokens
+                    }
                 }
                 if let extractionNotes = partialResponse.content.extractionNotes {
                     notes = extractionNotes
@@ -142,7 +152,9 @@ public struct TimelineExtractor {
             let elapsedTime = Date().timeIntervalSince(startTime)
             AIMELogger.shared.info("Timeline extraite avec succès", metadata: [
                 "elapsedTime": elapsedTime,
-                "itemCount": items.count
+                "itemCount": items.count,
+                "inputTokens": inputTokens,
+                "outputTokens": lastOutputTokens
             ])
             
             return timeline
@@ -209,6 +221,9 @@ public struct TimelineExtractor {
             
             let stream = session.streamResponse(to: text, generating: TimelineResponse.self)
             
+            let inputTokens = TextProcessor.estimateTokenCount(text)
+            var lastOutputTokens = 0
+            
             for try await partialResponse in stream {
                 guard let partialTimeline = partialResponse.content.timeline else { continue }
                 
@@ -226,6 +241,14 @@ public struct TimelineExtractor {
                     )
                 }
                 
+                // Enregistrer les tokens
+                let outputText = items.map { "\($0.title) \($0.date)" }.joined(separator: " ")
+                let currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
+                if currentOutputTokens != lastOutputTokens {
+                    TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                    lastOutputTokens = currentOutputTokens
+                }
+                
                 let resultTimeline = Timeline(
                     items: items,
                     extractionNotes: partialResponse.content.extractionNotes
@@ -234,7 +257,10 @@ public struct TimelineExtractor {
                 onUpdate(resultTimeline)
             }
             
-            AIMELogger.shared.info("Extraction de timeline en streaming terminée")
+            AIMELogger.shared.info("Extraction de timeline en streaming terminée", metadata: [
+                "inputTokens": inputTokens,
+                "finalOutputTokens": lastOutputTokens
+            ])
             
         } catch let error as LanguageModelSession.GenerationError {
             switch error {

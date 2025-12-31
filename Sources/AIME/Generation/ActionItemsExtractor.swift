@@ -68,8 +68,19 @@ public struct ActionItemsExtractor {
             let stream = session.streamResponse(to: text, generating: ActionItemsResponse.self)
             
             var actionItems: [String] = []
+            let inputTokens = TextProcessor.estimateTokenCount(text)
+            var lastOutputTokens = 0
+            
             for try await partialResponse in stream {
                 actionItems = partialResponse.content.actionItems ?? []
+                
+                // Enregistrer les tokens
+                let outputText = actionItems.joined(separator: " ")
+                let currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
+                if currentOutputTokens != lastOutputTokens {
+                    TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                    lastOutputTokens = currentOutputTokens
+                }
             }
             
             let items = actionItems.enumerated().map { index, item in
@@ -86,7 +97,9 @@ public struct ActionItemsExtractor {
             let elapsedTime = Date().timeIntervalSince(startTime)
             AIMELogger.shared.info("Action items extraits avec succès", metadata: [
                 "elapsedTime": elapsedTime,
-                "itemCount": items.count
+                "itemCount": items.count,
+                "inputTokens": inputTokens,
+                "outputTokens": lastOutputTokens
             ])
             
             return items
@@ -155,8 +168,20 @@ public struct ActionItemsExtractor {
             
             let stream = session.streamResponse(to: text, generating: ActionItemsResponse.self)
             
+            let inputTokens = TextProcessor.estimateTokenCount(text)
+            var lastOutputTokens = 0
+            
             for try await partialResponse in stream {
                 let actionItems = partialResponse.content.actionItems ?? []
+                
+                // Enregistrer les tokens
+                let outputText = actionItems.joined(separator: " ")
+                let currentOutputTokens = TextProcessor.estimateTokenCount(outputText)
+                if currentOutputTokens != lastOutputTokens {
+                    TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                    lastOutputTokens = currentOutputTokens
+                }
+                
                 let items = actionItems.enumerated().map { index, item in
                     ActionItem(
                         id: UUID(),
@@ -170,7 +195,10 @@ public struct ActionItemsExtractor {
                 onUpdate(items)
             }
             
-            AIMELogger.shared.info("Extraction d'action items en streaming terminée")
+            AIMELogger.shared.info("Extraction d'action items en streaming terminée", metadata: [
+                "inputTokens": inputTokens,
+                "finalOutputTokens": lastOutputTokens
+            ])
             
         } catch let error as LanguageModelSession.GenerationError {
             switch error {

@@ -90,6 +90,12 @@ public struct QuestionAnswerer {
                 generating: QuestionAnswerResponse.self
             )
             
+            // Enregistrer l'utilisation des tokens
+            let inputTokens = TextProcessor.estimateTokenCount(prompt)
+            let outputText = response.content.answer ?? ""
+            let outputTokens = TextProcessor.estimateTokenCount(outputText)
+            TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: outputTokens)
+            
             let elapsedTime = Date().timeIntervalSince(startTime)
             
             if response.content.insufficientInformation == true {
@@ -107,7 +113,9 @@ public struct QuestionAnswerer {
             
             AIMELogger.shared.info("Réponse générée avec succès", metadata: [
                 "elapsedTime": elapsedTime,
-                "answerLength": answer.count
+                "answerLength": answer.count,
+                "inputTokens": inputTokens,
+                "outputTokens": outputTokens
             ])
             
             return answer
@@ -195,6 +203,8 @@ public struct QuestionAnswerer {
             }
             
             var fullAnswer = ""
+            let inputTokens = TextProcessor.estimateTokenCount(prompt)
+            var lastOutputTokens = 0
             
             for try await partialResponse in stream {
                 if let isInsufficient = partialResponse.content.insufficientInformation,
@@ -204,10 +214,20 @@ public struct QuestionAnswerer {
                     fullAnswer = partialResponse.content.answer ?? ""
                 }
                 
+                // Enregistrer les tokens à chaque mise à jour (seulement si la réponse a changé)
+                let currentOutputTokens = TextProcessor.estimateTokenCount(fullAnswer)
+                if currentOutputTokens != lastOutputTokens {
+                    TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                    lastOutputTokens = currentOutputTokens
+                }
+                
                 onUpdate(fullAnswer)
             }
             
-            AIMELogger.shared.info("Génération en streaming terminée")
+            AIMELogger.shared.info("Génération en streaming terminée", metadata: [
+                "inputTokens": inputTokens,
+                "finalOutputTokens": lastOutputTokens
+            ])
             
         } catch let error as LanguageModelSession.GenerationError {
             switch error {

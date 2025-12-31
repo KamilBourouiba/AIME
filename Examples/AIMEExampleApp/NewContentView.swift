@@ -1,17 +1,19 @@
 /*
- Vue principale de l'application d'exemple
+ Vue principale utilisant la nouvelle architecture AIME v2.0
+ Avec vos propres types Generable
  */
 
 import SwiftUI
 import AIME
+import FoundationModels
 
-struct ContentView: View {
+struct NewContentView: View {
     @StateObject private var transcriber = Transcriber()
     @State private var question = ""
-    @State private var answer = ""
-    @State private var summary = ""
-    @State private var actionItems: [ActionItem] = []
-    @State private var timeline: Timeline?
+    @State private var answer: MyQuestionAnswer?
+    @State private var summary: MySummary?
+    @State private var actionItems: MyActionItems?
+    @State private var timeline: MyTimeline?
     @State private var testText = """
     Réunion du projet - 15 décembre 2024
     
@@ -39,37 +41,32 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Section Logs de Tokens (mini vue)
+                    // Section Logs de Tokens
                     tokenLogsMiniSection
                     
                     Divider()
                     
-                    // Section Transcription
-                    transcriptionSection
-                    
-                    Divider()
-                    
-                    // Section Question-Réponse
+                    // Section Question-Réponse avec votre type personnalisé
                     questionAnswerSection
                     
                     Divider()
                     
-                    // Section Résumé
+                    // Section Résumé avec votre type personnalisé
                     summarySection
                     
                     Divider()
                     
-                    // Section Action Items
+                    // Section Action Items avec votre type personnalisé
                     actionItemsSection
                     
                     Divider()
                     
-                    // Section Timeline
+                    // Section Timeline avec votre type personnalisé
                     timelineSection
                 }
                 .padding()
             }
-            .navigationTitle("AIME - Exemple")
+            .navigationTitle("AIME v2.0 - Personnalisé")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -82,10 +79,6 @@ struct ContentView: View {
                         showPromptEditor.toggle()
                     }) {
                         Image(systemName: "pencil")
-                    }
-                    
-                    Button("Tester") {
-                        runTests()
                     }
                 }
             }
@@ -149,64 +142,10 @@ struct ContentView: View {
         .cornerRadius(10)
     }
     
-    private var transcriptionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("🎤 Transcription")
-                .font(.headline)
-            
-            Text(transcriber.completeTranscript.isEmpty ? "Aucune transcription" : String(transcriber.completeTranscript.characters))
-                .frame(minHeight: 100)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            
-            HStack {
-                if transcriber.isRecording {
-                    Button("Arrêter") {
-                        Task {
-                            try? await transcriber.stopRecording()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                } else {
-                    Button("Démarrer") {
-                        Task {
-                            do {
-                                try await transcriber.startRecording(
-                                    onTranscriptUpdate: { transcript in
-                                        print("Transcription: \(transcript)")
-                                    },
-                                    onError: { error in
-                                        print("Erreur: \(error.localizedDescription)")
-                                    }
-                                )
-                            } catch {
-                                print("Erreur lors du démarrage: \(error)")
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                
-                if transcriber.isPaused {
-                    Button("Reprendre") {
-                        try? transcriber.resumeRecording()
-                    }
-                } else if transcriber.isRecording {
-                    Button("Pause") {
-                        transcriber.pauseRecording()
-                    }
-                }
-            }
-        }
-    }
-    
     private var questionAnswerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("❓ Question-Réponse")
+                Text("❓ Question-Réponse (Personnalisé)")
                     .font(.headline)
                 
                 Spacer()
@@ -226,70 +165,71 @@ struct ContentView: View {
             Button("Poser la question") {
                 Task {
                     do {
-                        answer = try await QuestionAnswerer.ask(
-                            question: question,
-                            context: testText,
+                        // Créer votre prompt avec PromptBuilder
+                        var promptBuilder = PromptBuilder()
+                        promptBuilder.addQuestion(question)
+                        promptBuilder.addContext(testText)
+                        if !customInstructions.isEmpty {
+                            promptBuilder.addInstruction(customInstructions)
+                        }
+                        let prompt = promptBuilder.build()
+                        
+                        // Générer avec votre type personnalisé
+                        answer = try await LanguageModelHelper.generate<MyQuestionAnswer>(
+                            prompt: prompt,
                             instructions: customInstructions.isEmpty ? nil : customInstructions
                         )
                     } catch {
-                        answer = "Erreur: \(error.localizedDescription)"
+                        print("Erreur: \(error.localizedDescription)")
                     }
                 }
             }
             .buttonStyle(.bordered)
             .disabled(question.isEmpty)
             
-            if !answer.isEmpty {
-                Text(answer)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
+            if let answer = answer {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Réponse:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(answer.answer)
+                    
+                    if let citation = answer.citation {
+                        Text("Citation: \(citation)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if let confidence = answer.confidence {
+                        Text("Confiance: \(confidence)%")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
             }
         }
     }
     
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("📝 Résumé")
+            Text("📝 Résumé (Personnalisé)")
                 .font(.headline)
             
             Button("Générer un résumé") {
                 Task {
                     do {
-                        summary = try await Summarizer.generate(
+                        // Utiliser un template de prompt
+                        let prompt = PromptTemplates.summary(
                             text: testText,
-                            style: .standard,
-                            instructions: customInstructions.isEmpty ? nil : customInstructions
-                        )
-                    } catch {
-                        summary = "Erreur: \(error.localizedDescription)"
-                    }
-                }
-            }
-            .buttonStyle(.bordered)
-            
-            if !summary.isEmpty {
-                Text(summary)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
-            }
-        }
-    }
-    
-    private var actionItemsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("✅ Action Items")
-                .font(.headline)
-            
-            Button("Extraire les action items") {
-                Task {
-                    do {
-                        actionItems = try await ActionItemsExtractor.extract(
-                            text: testText,
-                            maxItems: 10,
+                            style: "professionnel"
+                        ).build()
+                        
+                        summary = try await LanguageModelHelper.generate<MySummary>(
+                            prompt: prompt,
                             instructions: customInstructions.isEmpty ? nil : customInstructions
                         )
                     } catch {
@@ -299,15 +239,81 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             
-            if !actionItems.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
-                    ForEach(actionItems) { item in
-                        HStack {
-                            Text("•")
-                            Text(item.title)
-                            Spacer()
+            if let summary = summary {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Résumé:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(summary.summary)
+                    
+                    if let keyPoints = summary.keyPoints, !keyPoints.isEmpty {
+                        Text("Points clés:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        ForEach(keyPoints, id: \.self) { point in
+                            Text("• \(point)")
                         }
-                        .padding(.vertical, 2)
+                    }
+                    
+                    if let sentiment = summary.sentiment {
+                        Text("Sentiment: \(sentiment)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(8)
+            }
+        }
+    }
+    
+    private var actionItemsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("✅ Action Items (Personnalisé)")
+                .font(.headline)
+            
+            Button("Extraire les action items") {
+                Task {
+                    do {
+                        let prompt = PromptTemplates.actionItems(text: testText).build()
+                        
+                        actionItems = try await LanguageModelHelper.generate<MyActionItems>(
+                            prompt: prompt,
+                            instructions: customInstructions.isEmpty ? nil : customInstructions
+                        )
+                    } catch {
+                        print("Erreur: \(error.localizedDescription)")
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
+            
+            if let actionItems = actionItems {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(actionItems.actionItems.enumerated()), id: \.offset) { index, item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(index + 1). \(item.title)")
+                                .fontWeight(.semibold)
+                            
+                            if let assignee = item.assignee {
+                                Text("👤 \(assignee)")
+                                    .font(.caption)
+                            }
+                            
+                            if let dueDate = item.dueDate {
+                                Text("📅 \(dueDate)")
+                                    .font(.caption)
+                            }
+                            
+                            if let priority = item.priority {
+                                Text("🎯 \(priority)")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
                 .padding()
@@ -320,14 +326,16 @@ struct ContentView: View {
     
     private var timelineSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("📅 Timeline")
+            Text("📅 Timeline (Personnalisé)")
                 .font(.headline)
             
             Button("Extraire la timeline") {
                 Task {
                     do {
-                        timeline = try await TimelineExtractor.extract(
-                            text: testText,
+                        let prompt = PromptTemplates.timeline(text: testText).build()
+                        
+                        timeline = try await LanguageModelHelper.generate<MyTimeline>(
+                            prompt: prompt,
                             instructions: customInstructions.isEmpty ? nil : customInstructions
                         )
                     } catch {
@@ -337,20 +345,28 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             
-            if let timeline = timeline {
+            if let timeline = timeline, let items = timeline.items {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(timeline.items) { item in
+                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(item.title)
                                 .font(.headline)
                             Text("📆 \(item.date)")
+                            
                             if let owner = item.owner {
                                 Text("👤 \(owner)")
                             }
+                            
                             if let status = item.status {
                                 Text("Status: \(status)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                            }
+                            
+                            if let priority = item.priority {
+                                Text("🎯 \(priority)")
+                                    .font(.caption)
+                                    .foregroundColor(.purple)
                             }
                         }
                         .padding()
@@ -358,38 +374,20 @@ struct ContentView: View {
                         .background(Color.purple.opacity(0.1))
                         .cornerRadius(8)
                     }
+                    
+                    if let notes = timeline.notes {
+                        Text("Notes: \(notes)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top)
+                    }
                 }
             }
         }
     }
-    
-    // MARK: - Tests
-    
-    private func runTests() {
-        print("🧪 Exécution des tests...")
-        
-        // Test TextProcessor
-        let chunks = TextProcessor.chunkText(testText)
-        print("✅ TextProcessor.chunkText: \(chunks.count) chunks")
-        
-        let isEmpty = TextProcessor.isEmpty("")
-        print("✅ TextProcessor.isEmpty: \(isEmpty)")
-        
-        // Test TokenTracker
-        TokenTracker.shared.reset()
-        TokenTracker.shared.recordUsage(inputTokens: 100, outputTokens: 50)
-        let usage = TokenTracker.shared.getTotalUsage()
-        print("✅ TokenTracker: \(usage.totalTokens) tokens")
-        
-        // Test ModelAvailability
-        let isAvailable = ModelAvailability.isAvailable()
-        print("✅ ModelAvailability.isAvailable: \(isAvailable)")
-        
-        print("✅ Tests terminés!")
-    }
 }
 
 #Preview {
-    ContentView()
+    NewContentView()
 }
 

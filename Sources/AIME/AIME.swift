@@ -3,6 +3,12 @@
  Par Kamil Bourouiba
  
  Package principal pour intégrer Apple Intelligence dans vos applications SwiftUI
+ 
+ NOUVELLE ARCHITECTURE (v2.0):
+ - Aucun type @Generable dans le package
+ - Vous créez vos propres types Generable dans votre code
+ - Utilisez LanguageModelHelper pour générer des réponses
+ - Utilisez PromptBuilder pour créer des prompts facilement
  */
 
 import Foundation
@@ -10,7 +16,7 @@ import Foundation
 /// Point d'entrée principal du package AIME
 public enum AIME {
     /// Version actuelle du package
-    public static let version = "1.0.0"
+    public static let version = "2.0.0"
     
     /// Configuration globale par défaut
     @available(iOS 26.0, macOS 26.0, watchOS 26.0, tvOS 26.0, *)

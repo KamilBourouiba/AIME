@@ -78,6 +78,7 @@ public struct Summarizer {
             // Si le texte est trop long, utiliser ChunkProcessor
             if text.count > 4096 * 3 {
                 let processor = ChunkProcessor(model: model, instructions: finalInstructions, text: text)
+                let inputTokens = TextProcessor.estimateTokenCount(text)
                 
                 let summary = try await processor.process { chunkText in
                     let session = LanguageModelSession(model: model, instructions: finalInstructions)
@@ -89,10 +90,16 @@ public struct Summarizer {
                     return chunkSummary + "\n"
                 }
                 
+                // Enregistrer les tokens pour le texte long
+                let outputTokens = TextProcessor.estimateTokenCount(summary)
+                TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: outputTokens)
+                
                 let elapsedTime = Date().timeIntervalSince(startTime)
                 AIMELogger.shared.info("Résumé généré avec succès (texte long)", metadata: [
                     "elapsedTime": elapsedTime,
-                    "summaryLength": summary.count
+                    "summaryLength": summary.count,
+                    "inputTokens": inputTokens,
+                    "outputTokens": outputTokens
                 ])
                 
                 return applyMaxLength(summary, maxLength: maxLength)
@@ -101,14 +108,26 @@ public struct Summarizer {
                 let stream = session.streamResponse(to: text, generating: Summary.self)
                 
                 var fullSummary = ""
+                let inputTokens = TextProcessor.estimateTokenCount(text)
+                var lastOutputTokens = 0
+                
                 for try await partialResponse in stream {
                     fullSummary = partialResponse.content.summary ?? ""
+                    
+                    // Enregistrer les tokens à chaque mise à jour
+                    let currentOutputTokens = TextProcessor.estimateTokenCount(fullSummary)
+                    if currentOutputTokens != lastOutputTokens {
+                        TokenTracker.shared.recordUsage(inputTokens: inputTokens, outputTokens: currentOutputTokens)
+                        lastOutputTokens = currentOutputTokens
+                    }
                 }
                 
                 let elapsedTime = Date().timeIntervalSince(startTime)
                 AIMELogger.shared.info("Résumé généré avec succès", metadata: [
                     "elapsedTime": elapsedTime,
-                    "summaryLength": fullSummary.count
+                    "summaryLength": fullSummary.count,
+                    "inputTokens": inputTokens,
+                    "outputTokens": lastOutputTokens
                 ])
                 
                 return applyMaxLength(fullSummary, maxLength: maxLength)
