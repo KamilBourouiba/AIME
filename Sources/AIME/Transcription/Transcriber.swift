@@ -124,7 +124,12 @@ public class Transcriber: ObservableObject {
                 transcriber: transcriber!,
                 meetingItem: Binding(
                     get: { recordingItem },
-                    set: { recordingItem = $0 }
+                    set: { newValue in
+                        recordingItem.text = newValue.text
+                        recordingItem.title = newValue.title
+                        recordingItem.url = newValue.url
+                        recordingItem.isComplete = newValue.isComplete
+                    }
                 ),
                 configuration: recordingConfiguration
             )
