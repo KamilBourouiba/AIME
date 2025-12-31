@@ -107,22 +107,22 @@ public struct TranscriptionConfiguration {
     public var locale: Locale
     
     /// Options de transcription
-    public var transcriptionOptions: SpeechTranscriber.TranscriptionOptions
+    public var transcriptionOptions: Set<SpeechTranscriber.TranscriptionOption>
     
     /// Options de reporting
-    public var reportingOptions: SpeechTranscriber.ReportingOptions
+    public var reportingOptions: Set<SpeechTranscriber.ReportingOption>
     
     /// Options d'attributs
-    public var attributeOptions: SpeechTranscriber.AttributeOptions
+    public var attributeOptions: Set<SpeechTranscriber.ResultAttributeOption>
     
     /// Taille du buffer audio
     public var bufferSize: Int
     
     public init(
         locale: Locale = .current,
-        transcriptionOptions: SpeechTranscriber.TranscriptionOptions = [],
-        reportingOptions: SpeechTranscriber.ReportingOptions = [.volatileResults],
-        attributeOptions: SpeechTranscriber.AttributeOptions = [.audioTimeRange],
+        transcriptionOptions: Set<SpeechTranscriber.TranscriptionOption> = [],
+        reportingOptions: Set<SpeechTranscriber.ReportingOption> = [.volatileResults],
+        attributeOptions: Set<SpeechTranscriber.ResultAttributeOption> = [.audioTimeRange],
         bufferSize: Int = 4096
     ) {
         self.locale = locale
