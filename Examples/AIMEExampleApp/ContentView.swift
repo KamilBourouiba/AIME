@@ -1,17 +1,72 @@
+//
+//  ContentView.swift
+//  AIMEExampleApp
+//
+//  Created by Apprenant 122 on 12/31/25.
+//
+
 /*
  Vue principale de l'application d'exemple
+ Utilise la nouvelle API simplifiée AIME v3.0
  */
 
 import SwiftUI
 import AIME
+import FoundationModels
+
+// MARK: - Vos Types Generable (dans votre code)
+
+@Generable
+struct Answer {
+    @Guide(description: "La réponse à la question")
+    var answer: String
+    
+    @Guide(description: "Une citation du contexte source")
+    var citation: String?
+}
+
+@Generable
+struct Summary {
+    @Guide(description: "Le résumé du texte")
+    var summary: String
+}
+
+@Generable
+struct ActionItemsResponse {
+    @Guide(description: "Liste des action items")
+    var actionItems: [String]
+}
+
+@Generable
+struct TimelineResponse {
+    @Guide(description: "Les items de la timeline")
+    var items: [TimelineItemResponse]?
+}
+
+@Generable
+struct TimelineItemResponse {
+    @Guide(description: "Titre de l'item")
+    var title: String
+    
+    @Guide(description: "Date ou période")
+    var date: String
+    
+    @Guide(description: "Personne responsable")
+    var owner: String?
+    
+    @Guide(description: "Statut")
+    var status: String?
+}
+
+// MARK: - Vue Principale
 
 struct ContentView: View {
     @StateObject private var transcriber = Transcriber()
     @State private var question = ""
-    @State private var answer = ""
-    @State private var summary = ""
-    @State private var actionItems: [ActionItem] = []
-    @State private var timeline: Timeline?
+    @State private var answer: Answer?
+    @State private var summary: Summary?
+    @State private var actionItems: [String] = []
+    @State private var timeline: TimelineResponse?
     @State private var testText = """
     Réunion du projet - 15 décembre 2024
     
@@ -31,19 +86,32 @@ struct ContentView: View {
     - Réunion de suivi prévue le 20 décembre
     - Déploiement en production prévu pour le 1er janvier 2025
     """
-    @State private var customInstructions: String = ""
-    @State private var showPromptEditor = false
-    @State private var showTokenLogs = false
+    
+    // Vos prompts système - modifiez-les comme vous voulez !
+    @State private var qaSystemPrompt = """
+    Tu es un assistant utile qui répond aux questions en te basant UNIQUEMENT sur les informations fournies.
+    Réponds de manière claire et concise.
+    """
+    
+    @State private var summarySystemPrompt = """
+    Tu es un assistant expert en résumé de texte.
+    Crée des résumés concis et informatifs.
+    """
+    
+    @State private var actionItemsSystemPrompt = """
+    Tu es un assistant expert en extraction d'action items.
+    Extrais tous les action items prioritaires des transcriptions de réunions.
+    """
+    
+    @State private var timelineSystemPrompt = """
+    Tu es un assistant expert en extraction de timeline.
+    Extrais tous les jalons, dates importantes et événements pour créer une timeline.
+    """
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Section Logs de Tokens (mini vue)
-                    tokenLogsMiniSection
-                    
-                    Divider()
-                    
                     // Section Transcription
                     transcriptionSection
                     
@@ -71,50 +139,10 @@ struct ContentView: View {
             }
             .navigationTitle("AIME - Exemple")
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showTokenLogs.toggle()
-                    }) {
-                        Image(systemName: "chart.bar")
-                    }
-                    
-                    Button(action: {
-                        showPromptEditor.toggle()
-                    }) {
-                        Image(systemName: "pencil")
-                    }
-                    
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Tester") {
                         runTests()
                     }
-                }
-            }
-            .sheet(isPresented: $showPromptEditor) {
-                NavigationView {
-                    PromptEditorView(testText: $testText, customInstructions: $customInstructions)
-                        .navigationTitle("Éditeur de Prompt")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Fermer") {
-                                    showPromptEditor = false
-                                }
-                            }
-                        }
-                }
-            }
-            .sheet(isPresented: $showTokenLogs) {
-                NavigationView {
-                    TokenLogsView()
-                        .navigationTitle("Logs de Tokens")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Fermer") {
-                                    showTokenLogs = false
-                                }
-                            }
-                        }
                 }
             }
         }
@@ -122,39 +150,12 @@ struct ContentView: View {
     
     // MARK: - Sections
     
-    private var tokenLogsMiniSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("📊 Tokens")
-                    .font(.headline)
-                let usage = TokenTracker.shared.getTotalUsage()
-                Text("Total: \(usage.totalTokens) (In: \(usage.inputTokens), Out: \(usage.outputTokens))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Button(action: {
-                showTokenLogs = true
-            }) {
-                Text("Voir détails")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        }
-        .padding()
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(10)
-    }
-    
     private var transcriptionSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("🎤 Transcription")
                 .font(.headline)
             
-            Text(transcriber.completeTranscript.isEmpty ? "Aucune transcription" : String(transcriber.completeTranscript.characters))
+            Text(String(transcriber.completeTranscript.characters).isEmpty ? "Aucune transcription" : String(transcriber.completeTranscript.characters))
                 .frame(minHeight: 100)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -205,20 +206,8 @@ struct ContentView: View {
     
     private var questionAnswerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("❓ Question-Réponse")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: {
-                    showPromptEditor = true
-                }) {
-                    Image(systemName: "pencil.circle")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-            }
+            Text("❓ Question-Réponse")
+                .font(.headline)
             
             TextField("Posez une question", text: $question)
                 .textFieldStyle(.roundedBorder)
@@ -226,25 +215,43 @@ struct ContentView: View {
             Button("Poser la question") {
                 Task {
                     do {
-                        answer = try await QuestionAnswerer.ask(
-                            question: question,
-                            context: testText,
-                            instructions: customInstructions.isEmpty ? nil : customInstructions
+                        // Nouvelle API simplifiée - Style OpenAI !
+                        let client = try AIME.client(systemPrompt: qaSystemPrompt)
+                        
+                        // Votre prompt - écrivez-le comme vous voulez !
+                        let prompt = """
+                        Question: \(question)
+                        
+                        Voici toutes les informations que tu peux utiliser pour répondre:
+                        \(testText)
+                        """
+                        
+                        answer = try await client.generate(
+                            prompt: prompt,
+                            generating: Answer.self
                         )
                     } catch {
-                        answer = "Erreur: \(error.localizedDescription)"
+                        print("Erreur: \(error.localizedDescription)")
                     }
                 }
             }
             .buttonStyle(.bordered)
             .disabled(question.isEmpty)
             
-            if !answer.isEmpty {
-                Text(answer)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
+            if let answer = answer {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(answer.answer)
+                    
+                    if let citation = answer.citation {
+                        Text("Citation: \(citation)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
             }
         }
     }
@@ -257,20 +264,30 @@ struct ContentView: View {
             Button("Générer un résumé") {
                 Task {
                     do {
-                        summary = try await Summarizer.generate(
-                            text: testText,
-                            style: .standard,
-                            instructions: customInstructions.isEmpty ? nil : customInstructions
+                        // Nouvelle API simplifiée !
+                        let client = try AIME.client(systemPrompt: summarySystemPrompt)
+                        
+                        // Votre prompt personnalisé
+                        let prompt = """
+                        Résume le texte suivant de manière concise et informative.
+                        
+                        Texte:
+                        \(testText)
+                        """
+                        
+                        summary = try await client.generate(
+                            prompt: prompt,
+                            generating: Summary.self
                         )
                     } catch {
-                        summary = "Erreur: \(error.localizedDescription)"
+                        print("Erreur: \(error.localizedDescription)")
                     }
                 }
             }
             .buttonStyle(.bordered)
             
-            if !summary.isEmpty {
-                Text(summary)
+            if let summary = summary {
+                Text(summary.summary)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.green.opacity(0.1))
@@ -287,11 +304,24 @@ struct ContentView: View {
             Button("Extraire les action items") {
                 Task {
                     do {
-                        actionItems = try await ActionItemsExtractor.extract(
-                            text: testText,
-                            maxItems: 10,
-                            instructions: customInstructions.isEmpty ? nil : customInstructions
+                        // Nouvelle API simplifiée !
+                        let client = try AIME.client(systemPrompt: actionItemsSystemPrompt)
+                        
+                        // Votre prompt - complètement personnalisé !
+                        let prompt = """
+                        Extrais tous les action items prioritaires du texte suivant.
+                        Retourne une liste claire et structurée.
+                        
+                        Texte:
+                        \(testText)
+                        """
+                        
+                        let response = try await client.generate(
+                            prompt: prompt,
+                            generating: ActionItemsResponse.self
                         )
+                        
+                        actionItems = response.actionItems
                     } catch {
                         print("Erreur: \(error.localizedDescription)")
                     }
@@ -301,10 +331,10 @@ struct ContentView: View {
             
             if !actionItems.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    ForEach(actionItems) { item in
+                    ForEach(Array(actionItems.enumerated()), id: \.offset) { index, item in
                         HStack {
                             Text("•")
-                            Text(item.title)
+                            Text(item)
                             Spacer()
                         }
                         .padding(.vertical, 2)
@@ -326,9 +356,21 @@ struct ContentView: View {
             Button("Extraire la timeline") {
                 Task {
                     do {
-                        timeline = try await TimelineExtractor.extract(
-                            text: testText,
-                            instructions: customInstructions.isEmpty ? nil : customInstructions
+                        // Nouvelle API simplifiée !
+                        let client = try AIME.client(systemPrompt: timelineSystemPrompt)
+                        
+                        // Votre prompt personnalisé
+                        let prompt = """
+                        Crée une timeline à partir du texte suivant.
+                        Inclus les dates, responsables et statuts si mentionnés.
+                        
+                        Texte:
+                        \(testText)
+                        """
+                        
+                        timeline = try await client.generate(
+                            prompt: prompt,
+                            generating: TimelineResponse.self
                         )
                     } catch {
                         print("Erreur: \(error.localizedDescription)")
@@ -337,9 +379,9 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             
-            if let timeline = timeline {
+            if let timeline = timeline, let items = timeline.items {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(timeline.items) { item in
+                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(item.title)
                                 .font(.headline)
@@ -392,4 +434,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
